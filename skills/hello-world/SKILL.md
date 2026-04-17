@@ -1,35 +1,49 @@
 ---
 name: hello-world
-description: 一套标准的演示技能，用于展示连续提示原则。它包含 hello、weather 和 news 脚本，以演示多脚本间的弱联系与主动协同引导机制。
+description: 一套标准的演示技能，用于展示脚本设计铁律与连续提示原则。包含 hello（系统信息采集）、weather（天气 API 调用）和 news（新闻 API 拉取）三个脚本，演示如何编写执行真实任务的技能脚本。
 ---
 
 # Hello World 示例技能
 
-这是一套展示 **Agent Skills 连续提示原则 (Continuous Guidance)** 规范的演示工具集。本例模拟了日常助手在回答用户时的连贯动作引导。
+这是一套展示 **Agent Skills 脚本设计规范** 的参考实现。每个脚本都执行真实的程序操作，并在末尾追加少量连续提示。
 
 ## 包含能力
 
 本技能提供 3 个可执行工具（脚本）：
 
-1. **hello**
-   - 用途：向用户打招呼
-   - 命令：`pnpm exec tsx scripts/hello.ts`
-2. **weather**
-   - 用途：获取美国当前天气的模拟数据
-   - 命令：`pnpm exec tsx scripts/weather.ts`
-3. **news**
-   - 用途：获取美国当前新闻的模拟数据
-   - 命令：`pnpm exec tsx scripts/news.ts`
+1. **hello** — 系统信息采集
+   - 使用 Node.js `os` 模块获取主机名、平台、CPU、内存、运行时间等真实数据
+   - 命令：`pnpm exec tsx skills/hello-world/scripts/hello.ts`
 
-## 设计说明：连续提示原则
+2. **weather** — 天气 API 调用
+   - 调用 [wttr.in](https://wttr.in) 免费 API（无需 Key）获取真实天气数据
+   - 命令：`pnpm exec tsx skills/hello-world/scripts/weather.ts [城市名]`
 
-虽然上述 3 个脚本在逻辑上没有强依赖（解耦），但它们在日常使用场景中具有上下文关联：**打招呼 -> 获取天气 -> 播报新闻**。
-为了让智能体能感知此类弱联系，脚本会在执行完毕后，特意在标准输出中尾附“Agent 提示信息”。这样 Agent 在运行完毕后，能够聪明地引导用户进行相关的下一步功能体验。
+3. **news** — 新闻 API 拉取
+   - 调用 [Hacker News API](https://github.com/HackerNews/API) 获取真实热门科技新闻
+   - 命令：`pnpm exec tsx skills/hello-world/scripts/news.ts [条数]`
 
-## 目录结构参考演示
+## 设计说明：为什么这样写
 
-该技能完美符合以下规范文件体系：
-- `SKILL.md`: 核心的技能定义以及触发说明
-- `scripts/`: 存放所有可执行逻辑和入口 (hello, weather, news)
-- `references/`: 通常存放文档（本示例中为空展示版）
-- `assets/`: 通常存放静态图文素材
+这三个脚本是 AGENTS.md 中**脚本设计原则**的参考实现：
+
+| 脚本 | 实际程序逻辑 | 连续提示 |
+|---|---|---|
+| hello.ts | `os.hostname()`, `os.cpus()`, `os.totalmem()` 等系统调用 | 末尾 1 行 |
+| weather.ts | `fetch()` 调用 wttr.in API + JSON 解析 | 末尾 1 行 |
+| news.ts | `fetch()` 调用 HN API + 并发请求 + 数据聚合 | 末尾 1 行 |
+
+**自检标准**：删除所有 `console.log` 后，每个脚本仍然执行了有意义的操作（系统调用、网络请求、数据处理）。
+
+## 目录结构
+
+```
+hello-world/
+├── SKILL.md          # 技能定义与使用说明
+├── scripts/
+│   ├── hello.ts      # 系统信息采集
+│   ├── weather.ts    # 天气 API 调用
+│   └── news.ts       # 新闻 API 拉取
+├── references/       # 文档（本示例为空）
+└── assets/           # 静态资源
+```

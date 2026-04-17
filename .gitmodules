@@ -1,0 +1,3 @@
+[submodule "references/examples"] 
+  path = references/examples 
+  url = https://github.com/XTLS/Xray-examples

@@ -1,19 +1,46 @@
 // scripts/news.ts
+// 演示：调用 Hacker News 公开 API，拉取真实热门新闻
 
-export {};
+interface HNItem {
+  title: string;
+  url?: string;
+  score: number;
+  by: string;
+}
 
-function main() {
-  // 1. 模拟核心逻辑
-  console.log(">> 正在拉取最新的头条新闻...");
-  console.log(">> 【头条】AI 产业再迎突破：最新 Agent Framework 发布！");
-  console.log(">> 【快讯】纽约证券交易所今日指数小幅上涨 0.5%...");
-  console.log(">> 新闻播报完毕。\n");
+async function fetchItem(id: number): Promise<HNItem> {
+  const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as HNItem;
+}
 
-  // 2. 连续提示设计：闭环或者其他关联
+async function main() {
+  const count = Math.min(parseInt(process.argv[2] || '5', 10), 20);
+
+  // ---- 实际程序逻辑：调用 HN API 获取真实新闻 ----
+  try {
+    const idsRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+    if (!idsRes.ok) throw new Error(`HTTP ${idsRes.status}`);
+
+    const allIds = (await idsRes.json()) as number[];
+    const topIds = allIds.slice(0, count);
+    const stories = await Promise.all(topIds.map(fetchItem));
+
+    console.log(`>> Top ${stories.length} Hacker News Stories:\n`);
+    stories.forEach((s, i) => {
+      console.log(`  [${i + 1}] ${s.title}  (↑${s.score} by ${s.by})`);
+      if (s.url) console.log(`      ${s.url}`);
+    });
+  } catch (err) {
+    console.error(`>> Failed to fetch news: ${(err as Error).message}`);
+    process.exitCode = 1;
+  }
+
+  // ---- 连续提示：末尾追加，仅 **少量** 引导 ----
   console.log("=========================================");
-  console.log("[AGENT GUIDANCE] 智能体请注意：");
-  console.log("你已经完成了所有默认的日常早报流转（打招呼 -> 天气 -> 新闻）。");
-  console.log("目前流程在此触底。你可以顺势问候用户是否还有其他特定的事情需要帮忙。");
+  console.log(
+    '\n[AGENT GUIDANCE] 日常早报流程结束(hello→weather→news)，可询问用户是否有其他需求。'
+  );
   console.log("=========================================");
 }
 
