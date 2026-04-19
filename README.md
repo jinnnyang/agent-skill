@@ -2,62 +2,44 @@
 
 智能体开发仓库，基于 [Agent Skills 规范](https://agentskills.io)。
 
+## 这是一个什么项目？
+
+这是一个为 **AI 智能体 (Agent)** 设计的技能仓库。它不仅仅是一个脚本集合，更是一套让 AI 能够自主发现、理解并执行任务的“武器库”。
+
+- **对开发者**：提供标准化的目录结构，方便维护复杂的工作流脚本。
+- **对智能体**：通过 `SKILL.md` 指令文件，AI 能够快速掌握工具的使用边界和操作流程。
+
+## 命令指南
+
+本仓库提供了一系列工具来辅助开发与维护：
+
+| 命令 | 分类 | 具体用途 |
+|------|------|----------|
+| `pnpm dev` | **开发预览** | 扫描 `skills/` 目录并列出所有已就绪的技能。用于快速验证技能是否被系统正确识别。 |
+| `pnpm build` | **编译构建** | 将 TypeScript 源码编译为 Javascript (`dist/` 目录)，用于生产环境执行。 |
+| `pnpm test` | **质量保障** | 运行单元测试（Vitest），确保技能脚本逻辑稳健。 |
+| `pnpm lint` | **规范检查** | 检查代码风格，确保符合团队/仓库约定的编码规范。 |
+| `pnpm format` | **自动格式化** | 自动修正代码缩进和风格问题。 |
+
 ## 项目结构
 
 ```
 agent-skill/
-├── skills/              # Agent Skills 技能集合
+├── skills/              # 业务技能核心（Agent 将从此读取指令）
 │   └── [skill-name]/
-│       ├── SKILL.md    # 必需: YAML frontmatter + 指令
-│       ├── scripts/    # 可选: 可执行代码
-│       ├── references/ # 可选: 额外文档
-│       └── assets/     # 可选: 静态资源
-├── src/                 # TypeScript 源代码
-├── tests/               # 测试文件
-├── .devcontainer/      # DevContainer 配置
-├── .roo/               # 模式特定规则
-└── package.json
+│       ├── SKILL.md    # 核心指令：定义触发场景、工具用法及 Guidance
+│       ├── scripts/    # 执行动力：实际完成任务的脚本 (TS/Shell/PS1)
+│       └── ...
+├── src/                 # 框架驱动：用于加载、管理技能的基础逻辑
+├── .devcontainer/      # 开发容器配置
+└── ...
 ```
 
 ## 快速开始
 
-### 环境要求
-
-- Node.js 20+
-- Docker (用于 DevContainer)
-- 支持脚本语言: TypeScript (主要), Shell (.sh), PowerShell (.ps1)
-
-### 安装
-
-```bash
-pnpm install
-```
-
-### 开发命令
-
-| 命令 | 说明 | 直接运行 (npx) |
-|------|------|----------------|
-| `pnpm dev` | 开发模式 (热重载) | `pnpm exec tsx watch src/bin.ts` |
-| `pnpm build` | 构建项目 | `pnpm exec tsc` |
-| `pnpm test` | 运行测试 | `pnpm exec vitest` |
-| `pnpm lint` | 代码检查 | `pnpm exec eslint "{src,skills}/**/*.ts"` |
-| `pnpm format` | 代码格式化 | `pnpm exec prettier --write "{src,skills}/**/*.ts"` |
-
-## 创建新 Skill
-
-在 `skills/` 目录下创建新目录，添加 `SKILL.md` 文件：
-
-```yaml
----
-name: my-skill
-description: 技能描述，说明用途和使用场景
----
-# 技能指令内容
-```
-
-## DevContainer
-
-使用 VS Code 打开项目会自动提示使用 DevContainer，点击 "Reopen in Container" 即可。
+1. **安装依赖**：`pnpm install`
+2. **预览技能**：`pnpm dev`
+3. **创建新技能**：在 `skills/` 下新建目录并编写 `SKILL.md` 后，再次运行 `pnpm dev` 即可看到新技能已加载。
 
 ## 参考
 
