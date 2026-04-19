@@ -410,7 +410,9 @@ async function handleSearch(options: any) {
   const results = hitRepos.slice(0, topK);
   results.forEach((repo, index) => {
     console.log(`## No. ${index + 1}：${repo.repoName} (Hitted ${repo.hitCount} times)`);
+    console.log('```plain');
     console.log(repo.snippet);
+    console.log('```');
     console.log();
   });
 
