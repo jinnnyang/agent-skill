@@ -2,7 +2,7 @@
   "name": "agent-skill",
   "version": "1.0.0",
   "description": "Multi-language agent development repository using Agent Skills specification",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
   "engines": {
@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "tsx watch src/bin.ts",
     "build": "tsc",
-    "start": "node dist/bin.js",
+    "start": "node dist/src/bin.js",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "lint": "eslint \"{src,skills}/**/*.ts\"",

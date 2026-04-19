@@ -9,6 +9,16 @@ import https from 'node:https';
 import http from 'node:http';
 import net from 'node:net';
 
+interface GitHubAsset {
+  name: string;
+  browser_download_url: string;
+}
+
+interface GitHubRelease {
+  assets: GitHubAsset[];
+}
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -32,7 +42,8 @@ function downloadFile(url: string, dest: string): Promise<void> {
       .get(url, { headers: { 'User-Agent': 'Node.js' } }, (res) => {
         if (res.statusCode === 301 || res.statusCode === 302) {
           if (res.headers.location) {
-            return downloadFile(res.headers.location, dest).then(resolvePromise).catch(reject);
+            downloadFile(res.headers.location, dest).then(resolvePromise).catch(reject);
+            return;
           }
         }
         if (res.statusCode !== 200) {
@@ -67,7 +78,7 @@ function isXrayUsable(): boolean {
   try {
     const output = execSync(`"${xrayBinPath}" version`, { encoding: 'utf-8' });
     return output.includes('Xray');
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -78,7 +89,7 @@ async function cmdSetup(args: string[]) {
   const yes = args.includes('-y') || args.includes('--yes');
   
   // Find version from --version flag or positional arg
-  let version = '';
+  let version: string;
   const versionIdx = args.findIndex(a => a === '--version');
   if (versionIdx !== -1 && args[versionIdx + 1]) {
     version = args[versionIdx + 1];
@@ -167,7 +178,7 @@ async function cmdSetup(args: string[]) {
       : `https://api.github.com/repos/XTLS/Xray-core/releases/tags/${version}`;
 
     console.log(`>> Fetching Xray-core ${version} release info...`);
-    const releaseData = await new Promise<any>((resolvePromise, reject) => {
+    const releaseData = await new Promise<GitHubRelease>((resolvePromise, reject) => {
       https
         .get(apiUrl, { headers: { 'User-Agent': 'Node.js' } }, (res) => {
           let data = '';
@@ -183,7 +194,7 @@ async function cmdSetup(args: string[]) {
         .on('error', reject);
     });
 
-    const asset = releaseData.assets?.find((ast: any) => ast.name === assetName);
+    const asset = releaseData.assets?.find((ast: GitHubAsset) => ast.name === assetName);
     if (!asset) throw new Error(`Asset ${assetName} not found in release ${version}.`);
 
     console.log(`>> Downloading ${assetName} from ${asset.browser_download_url} ...`);
@@ -218,8 +229,8 @@ async function cmdSetup(args: string[]) {
       console.log('完成后，通过参考 `references/examples/` 中的案例，使用 `config` 命令进行按需配置。');
     }
     console.log('=========================================');
-  } catch (err: any) {
-    console.error(`>> [Setup Failed] ${err.message}`);
+  } catch (err: unknown) {
+    console.error(`>> [Setup Failed] ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
 }
@@ -231,7 +242,7 @@ function cmdConfig(args: string[]) {
   }
 
   const [pathStr, valStr] = args[0].split('=', 2);
-  let finalValue: any = valStr;
+  let finalValue: string | number | boolean | string[] = valStr;
 
   // Type inference
   if (valStr === 'true') finalValue = true;
@@ -243,7 +254,8 @@ function cmdConfig(args: string[]) {
   const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
   const keys = pathStr.split('.');
-  let current = config;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let current: any = config;
   
   for (let i = 0; i < keys.length - 1; i++) {
     const k = keys[i];
@@ -254,7 +266,7 @@ function cmdConfig(args: string[]) {
   current[keys[keys.length - 1]] = finalValue;
   writeFileSync(configPath, JSON.stringify(config, null, 2));
   
-  console.log(`>> Updated configured: ${pathStr} =`, finalValue);
+  console.log(`>> Updated configuration: ${pathStr} =`, finalValue);
   
   console.log('\n=========================================');
   console.log('[AGENT GUIDANCE] 配置已更新！如果配置已完善，即可通过 `start` 命令拉起代理进行验证。');
@@ -267,7 +279,7 @@ function checkRunningPid(): number | null {
   try {
     process.kill(pid, 0); // test signal, doesn't actually kill
     return pid;
-  } catch (e) {
+  } catch {
     // Process doesn't exist
     rmSync(pidPath);
     return null;
@@ -378,7 +390,7 @@ async function testConnection(): Promise<boolean> {
           }
         }
       }
-    } catch (e) {
+    } catch {
       console.log('>> Connection Test: SKIP (Invalid config file format)');
       return false;
     }
@@ -420,10 +432,9 @@ async function cmdStart() {
     console.log(`>> Xray is already running with PID ${existingPid}.`);
   } else {
     console.log('>> Starting Xray background process...');
-    const outLog = join(skillRoot, 'xray.log');
     const child = spawn(xrayBinPath, ['run', '-c', configPath], {
       detached: true,
-      stdio: ['ignore', 'ignore', 'ignore'] // In a real scenario we might redirect to outLog
+      stdio: ['ignore', 'ignore', 'ignore'] 
     });
     
     child.unref();
@@ -451,7 +462,7 @@ function cmdStop() {
     try {
       process.kill(pid, 9); // SIGKILL
       console.log(`>> Killed Xray process ${pid}.`);
-    } catch(e) {
+    } catch {
       console.log(`>> Could not kill PID ${pid}.`);
     }
     rmSync(pidPath);

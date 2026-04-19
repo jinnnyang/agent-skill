@@ -1,11 +1,9 @@
-// skills/read-repo/scripts/repo.ts
-
 import { parseArgs } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { DeepWikiFetcher, DEFAULT_SERVER_URL, MCPError, RequestError } from './deepwiki_helper.js';
+import { DeepWikiFetcher, DEFAULT_SERVER_URL } from './deepwiki_helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
