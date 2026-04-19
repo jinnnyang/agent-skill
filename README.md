@@ -1,46 +1,84 @@
 # Agent Skill
 
-智能体开发仓库，基于 [Agent Skills 规范](https://agentskills.io)。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue.svg)](https://www.typescriptlang.org/)
+[![Env: DevContainer](https://img.shields.io/badge/Environment-DevContainer-green.svg)](https://code.visualstudio.com/docs/devcontainers/containers)
 
-## 这是一个什么项目？
+**English** | [简体中文](./README_zh-CN.md)
 
-这是一个为 **AI 智能体 (Agent)** 设计的技能仓库。它不仅仅是一个脚本集合，更是一套让 AI 能够自主发现、理解并执行任务的“武器库”。
+A multi-language development framework for **Agent Skills**, built on the [Agent Skills specification](https://agentskills.io). This repository provides a standardized, discoverable, and executable "arsenal" for AI agents to enhance their operational capabilities.
 
-- **对开发者**：提供标准化的目录结构，方便维护复杂的工作流脚本。
-- **对智能体**：通过 `SKILL.md` 指令文件，AI 能够快速掌握工具的使用边界和操作流程。
+---
 
-## 命令指南
+Inspired by [anthropics/skills](https://github.com/anthropics/skills). Special thanks to the **Anthropic team**.
 
-本仓库提供了一系列工具来辅助开发与维护：
+---
 
-| 命令 | 分类 | 具体用途 |
-|------|------|----------|
-| `pnpm dev` | **开发预览** | 扫描 `skills/` 目录并列出所有已就绪的技能。用于快速验证技能是否被系统正确识别。 |
-| `pnpm build` | **编译构建** | 将 TypeScript 源码编译为 Javascript (`dist/` 目录)，用于生产环境执行。 |
-| `pnpm test` | **质量保障** | 运行单元测试（Vitest），确保技能脚本逻辑稳健。 |
-| `pnpm lint` | **规范检查** | 检查代码风格，确保符合团队/仓库约定的编码规范。 |
-| `pnpm format` | **自动格式化** | 自动修正代码缩进和风格问题。 |
+## 🚀 Core Philosophy
 
-## 项目结构
+### 1. AI-First Documentation
+Traditional READMEs are for humans. In this repository, `SKILL.md` is for **AI Agents**. It defines activation scenarios, input requirements, and operational boundaries, enabling the agent to autonomously decide *when* and *how* to use a skill.
 
-```
+### 2. Continuous Guidance Mechanism
+Our scripts don't just "finish." At the end of execution, they provide actionable next-step suggestions via the `[AGENT GUIDANCE]` tag. This ensures seamless workflow transitions, reduces token waste, and minimizes hallucinations.
+
+### 3. Multi-Language & Environment Ready
+Built for TypeScript, Shell, and PowerShell. Comes pre-configured with a hardened DevContainer for immediate, isolated development.
+
+---
+
+## 📂 Project Structure
+
+```bash
 agent-skill/
-├── skills/              # 业务技能核心（Agent 将从此读取指令）
+├── skills/              # Business Skills (Core capabilities for the Agent)
 │   └── [skill-name]/
-│       ├── SKILL.md    # 核心指令：定义触发场景、工具用法及 Guidance
-│       ├── scripts/    # 执行动力：实际完成任务的脚本 (TS/Shell/PS1)
-│       └── ...
-├── src/                 # 框架驱动：用于加载、管理技能的基础逻辑
-├── .devcontainer/      # 开发容器配置
-└── ...
+│       ├── SKILL.md    # Instructions: Definitions, usage, and guidance
+│       └── scripts/    # Execution: Functional code (TS, Shell, etc.)
+├── src/                 # Framework: Loader and management infrastructure
+├── .roo/skills/         # Meta-tools: Internal tools for Agent's own development
+├── .devcontainer/      # Development environment configuration
+└── tests/               # Automation tests (Vitest)
 ```
 
-## 快速开始
+---
 
-1. **安装依赖**：`pnpm install`
-2. **预览技能**：`pnpm dev`
-3. **创建新技能**：在 `skills/` 下新建目录并编写 `SKILL.md` 后，再次运行 `pnpm dev` 即可看到新技能已加载。
+## 🛠️ Command Guide
 
-## 参考
+Manage the repository lifecycle using `pnpm`:
 
-- [Agent Skills 规范](https://agentskills.io)
+| Command | Category | Usage |
+|------|------|----------|
+| `pnpm dev` | **Preview** | Scans `skills/` and lists all ready skills. |
+| `pnpm build` | **Build** | Compiles the TypeScript framework code to `dist/`. |
+| `pnpm test` | **Test** | Runs unit tests (Vitest) to ensure robustness. |
+| `pnpm lint` | **Lint** | Enforces code style and best practices. |
+| `pnpm format` | **Format** | Automatically fixes code style issues. |
+
+---
+
+## 🌟 Featured Skills
+
+- **[hello-world](./skills/hello-world)**: The baseline example demonstrating the "Continuous Guidance" flow.
+- **[cross-wall](./skills/cross-wall)**: DevOps skill for managing Xray proxy services in Linux/Docker environments.
+- **[read-repo](./skills/read-repo)**: High-performance repository analysis and context extraction.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Support for more language templates (e.g., Python, Go)
+- [ ] Automated instruction quality assessment for `SKILL.md`
+- [ ] Deep integration with Model Context Protocol (MCP) for major Agent frameworks
+
+## 🤝 Contribution
+
+1. **Follow the Spec**: Ensure all new skills adhere to the guidelines in [AGENTS.md](./AGENTS.md).
+2. **Progressive Disclosure**: Keep instructions concise; move deep details to `references/`.
+3. **Guidance at End**: Always include a `[AGENT GUIDANCE]` tag in script outputs to support continuous workflows.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](./LICENSE).
