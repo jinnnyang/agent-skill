@@ -1,0 +1,33 @@
+Available pages for microsoft/autogen:
+
+- 1 Overview
+  - 1.1 Package Architecture
+  - 1.2 Installation and Setup
+- 2 Core Foundation
+  - 2.1 Agent Runtime System
+  - 2.2 Model Client System
+  - 2.3 Message Types and Tool Agents
+  - 2.4 Memory Systems
+- 3 AgentChat API
+  - 3.1 AssistantAgent
+  - 3.2 Code Execution Agents
+  - 3.3 Specialized Agents
+- 4 Multi-Agent Teams
+  - 4.1 Team Orchestration
+  - 4.2 Termination Conditions
+  - 4.3 GraphFlow
+  - 4.4 MagenticOne System
+- 5 Model Integrations
+  - 5.1 OpenAI and Azure OpenAI
+  - 5.2 Other Model Providers
+- 6 Tools and Extensions
+  - 6.1 Code Execution
+  - 6.2 MCP Integration
+  - 6.3 Web and File Interaction
+- 7 .NET Framework
+  - 7.1 .NET Agent System
+  - 7.2 .NET SDK Distribution
+- 8 Development Environment
+  - 8.1 Python Workspace
+  - 8.2 Development Containers
+  - 8.3 CI/CD Workflows
