@@ -29,12 +29,12 @@ Once the repository is identified, generate a navigable outline of its documenta
 
 **Command:**
 ```bash
-pnpm exec tsx skills/read-repo/scripts/repo.ts read outline --repo <owner>/<repo>
+pnpm exec tsx skills/read-repo/scripts/repo.ts read outline <owner>/<repo>
 ```
 
 **Example:**
 ```bash
-pnpm exec tsx skills/read-repo/scripts/repo.ts read outline --repo karpathy/nanoGPT
+pnpm exec tsx skills/read-repo/scripts/repo.ts read outline karpathy/nanoGPT
 ```
 
 **Action:**
@@ -49,13 +49,13 @@ Using the outline from Step 2, identify the most relevant section(s) to read. Se
 
 **Command:**
 ```bash
-pnpm exec tsx skills/read-repo/scripts/repo.ts read content --repo <owner>/<repo> --range "<start_line>-<end_line>"
+pnpm exec tsx skills/read-repo/scripts/repo.ts read content <owner>/<repo> --range "<start_line>-<end_line>"
 ```
 
 **Example:**
 ```bash
 # After reviewing the outline, you decide to read the 'train.py' section which starts at line 850
-pnpm exec tsx skills/read-repo/scripts/repo.ts read content --repo karpathy/nanoGPT --range "850-1100"
+pnpm exec tsx skills/read-repo/scripts/repo.ts read content karpathy/nanoGPT --range "850-1100"
 ```
 
 **Action:**
@@ -107,15 +107,15 @@ These commands can be used to interact with the skill directly, bypassing the de
 ### `read`: Force Refresh or Read Structure
 - **Force a fresh download from the server, ignoring the cache:**
   ```bash
-  pnpm exec tsx skills/read-repo/scripts/repo.ts read content --repo <owner>/<repo> --without-cache
+  pnpm exec tsx skills/read-repo/scripts/repo.ts read content <owner>/<repo> --without-cache
   ```
 - **Read the high-level `structure` file instead of the full `content`:**
   ```bash
-  pnpm exec tsx skills/read-repo/scripts/repo.ts read structure --repo <owner>/<repo>
+  pnpm exec tsx skills/read-repo/scripts/repo.ts read structure <owner>/<repo>
   ```
 
 ### `ask`: Ask a Question
 - **Ask a question about a repository. This is sent to the DeepWiki service for an AI-generated answer.**
   ```bash
-  pnpm exec tsx skills/read-repo/scripts/repo.ts ask --repo <owner>/<repo> --question "Your question here"
+  pnpm exec tsx skills/read-repo/scripts/repo.ts ask <owner>/<repo> --question "Your question here"
   ```

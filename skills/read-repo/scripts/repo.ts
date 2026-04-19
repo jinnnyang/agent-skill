@@ -129,6 +129,21 @@ function generateMarkdownOutline(content: string) {
     }
 }
 
+function extractRepoName(urlOrRaw: string): string {
+    try {
+        if (urlOrRaw.startsWith('http://') || urlOrRaw.startsWith('https://')) {
+            const parsed = new URL(urlOrRaw);
+            let pathPart = parsed.pathname.replace(/^\/+/, '');
+            pathPart = pathPart.replace(/\.git$/, '');
+            const parts = pathPart.split('/');
+            if (parts.length >= 2) {
+                return `${parts[0]}/${parts[1]}`;
+            }
+        }
+    } catch {}
+    return urlOrRaw.trim().replace(/\.git$/, '');
+}
+
 async function handleRead(options: any, positionals: string[], client: DeepWikiFetcher) {
     if (positionals.length === 0) {
         console.error("Error: Missing data_type argument (structure, content, or outline).");
@@ -141,11 +156,12 @@ async function handleRead(options: any, positionals: string[], client: DeepWikiF
          process.exit(1);
     }
 
-    const repoName = options.repo;
-    if (!repoName) {
-        console.error("Error: Missing --repo argument.");
+    const rawUrl = positionals[1] || options.url;
+    if (!rawUrl) {
+        console.error("Error: Missing target repository or URL.");
         process.exit(1);
     }
+    const repoName = extractRepoName(rawUrl);
 
     const effectiveDataType = dataType === "outline" ? "content" : dataType;
 
@@ -233,14 +249,16 @@ async function handleRead(options: any, positionals: string[], client: DeepWikiF
     }
 }
 
-async function handleAsk(options: any, client: DeepWikiFetcher) {
-    if (!options.repo || !options.question) {
-        console.error("Error: Output requires both --repo and --question arguments.");
+async function handleAsk(options: any, positionals: string[], client: DeepWikiFetcher) {
+    const rawUrl = positionals[0] || options.url;
+    if (!rawUrl || !options.question) {
+        console.error("Error: Output requires a target repository and --question argument.");
         process.exit(1);
     }
+    const repoName = extractRepoName(rawUrl);
 
     try {
-        const result = await client.askQuestion(options.repo, options.question);
+        const result = await client.askQuestion(repoName, options.question);
         if (result) {
             if (typeof result === 'object') {
                 console.log(JSON.stringify(result, null, 2));
@@ -290,7 +308,7 @@ async function main() {
         const { values, positionals } = parseArgs({
             args,
             options: {
-                repo: { type: 'string' },
+                url: { type: 'string' },
                 'without-cache': { type: 'boolean' },
                 range: { type: 'string' }
             },
@@ -298,14 +316,15 @@ async function main() {
         });
         await handleRead(values, positionals, client);
     } else if (command === "ask") {
-        const { values } = parseArgs({
+        const { values, positionals } = parseArgs({
             args,
             options: {
-                repo: { type: 'string' },
+                url: { type: 'string' },
                 question: { type: 'string' }
-            }
+            },
+            allowPositionals: true
         });
-        await handleAsk(values, client);
+        await handleAsk(values, positionals, client);
     } else if (command === "list") {
         const { values } = parseArgs({
             args,
