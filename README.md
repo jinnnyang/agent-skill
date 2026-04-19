@@ -25,6 +25,7 @@ agent-skill/
 
 - Node.js 20+
 - Docker (用于 DevContainer)
+- 支持脚本语言: TypeScript (主要), Shell (.sh), PowerShell (.ps1)
 
 ### 安装
 
