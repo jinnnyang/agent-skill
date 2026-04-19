@@ -255,7 +255,7 @@ async function handleAsk(options: any, client: DeepWikiFetcher) {
 }
 
 async function handleList(options: any, client: DeepWikiFetcher) {
-    if (options.cached) {
+    if (!options['without-cache']) {
         await listCachedRepos();
     } else {
         try {
@@ -310,7 +310,7 @@ async function main() {
         const { values } = parseArgs({
             args,
             options: {
-                cached: { type: 'boolean' }
+                'without-cache': { type: 'boolean' }
             }
         });
         await handleList(values, client);

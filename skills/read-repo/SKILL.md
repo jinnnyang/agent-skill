@@ -95,13 +95,13 @@ Combine the information gathered and present it clearly.
 These commands can be used to interact with the skill directly, bypassing the default workflow.
 
 ### `list`: List Repositories
-- **List all available repositories on the server:**
+- **List only locally cached repositories and their last update time:**
   ```bash
   pnpm exec tsx skills/read-repo/scripts/repo.ts list
   ```
-- **List only locally cached repositories and their last update time:**
+- **List all available repositories on the server (force fetch):**
   ```bash
-  pnpm exec tsx skills/read-repo/scripts/repo.ts list --cached
+  pnpm exec tsx skills/read-repo/scripts/repo.ts list --without-cache
   ```
 
 ### `read`: Force Refresh or Read Structure
