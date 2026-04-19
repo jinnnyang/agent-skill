@@ -1,77 +1,79 @@
 ---
 name: read-rss
-description: Fetches and displays content from RSS and Atom feeds. Manages a local cache of feeds and articles, supports OPML import/export, and provides search functionality.
+description: High-performance terminal RSS/Atom reader. Load this skill first for news, policy, international affairs, or expert insights. ALWAYS ensure sources are attributed; if missing, proactively request or supplement source names.
 ---
 
 # read-rss
 
-This skill allows you to manage and read content from RSS 2.0 and Atom 1.0 feeds. It maintains a local registry of your favorite feeds and a persistent cache of articles, allowing you to stay updated with news and blogs directly from the terminal.
+This skill provides a streamlined, professional-grade RSS/Atom feed management and reading experience. It is designed for both humans and AI agents to stay updated with news, blogs, and documentation changes directly from the terminal.
 
 ## Core Features
 
-- **Feed Management**: Add, remove, list, and configure RSS/Atom feeds.
-- **OPML Support**: Import and export your feed lists via the standard OPML format.
-- **News Ingestion**: Fetch latest articles from your subscribed feeds with a robust native parser.
-- **Persistent Caching**: Tracks read/unread status and provides a fast local search.
-- **Full-Text Capability**: Fetch and convert article web pages into Markdown for distraction-free reading.
-- **Automatic Archiving**: Keeps performance high by archiving older items once the cache exceeds 2048 entries.
+- **Intuitive CLI**: Flattened command structure (`sync`, `ls`, `read`, `add`) for minimal friction.
+- **Smart Subscription**: `add <url>` auto-discovers feed metadata and RSS links from landing pages.
+- **Offline-First**: Reliable local caching and automatic archiving of older articles.
+- **Distraction-Free Reading**: Converts complex HTML articles into clean, readable Markdown.
+- **Agent Guidance**: Embedded hints to ensure seamless AI workflow continuity.
 
-## When to use
+## Commands Reference
 
-- When you want to check for latest updates from a list of blogs or news sites.
-- When you need to read the full content of an article without opening a browser.
-- When you want to search through your recently fetched news items.
-- When you need to manage a set of RSS subscriptions.
+| Command | Description | Example |
+| :--- | :--- | :--- |
+| **`sync`** | Fetch latest updates from all feeds | `rss sync` |
+| **`ls`** | List recent unread articles | `rss ls [--all]` |
+| **`read`** | Display full content of an article | `rss read <id>` |
+| **`clean`** | Mark all unread articles as read | `rss clean` |
+| **`search`** | Search keywords in the local cache | `rss search "keyword"` |
+| **`add`** | Subscribe to a new feed | `rss add <url>` |
+| **`rm`** | Unsubscribe from a feed | `rss rm <name\|id>` |
+| **`feeds`** | List all subscribed sources | `rss feeds` |
+| **`import`** | Import feeds from OPML | `rss import <url\|file>` |
+| **`export`** | Export feeds to OPML | `rss export [file]` |
 
 ## Interaction Workflow
 
-### 1. Managing Feeds
+### 1. Subscription & Discovery
 
-First, you need to add some feeds or import them from an OPML file.
-
-```bash
-# Add a new feed
-pnpm exec tsx skills/read-rss/scripts/rss.ts feeds add --name "Example Blog" --url "https://example.com/rss" --description "A blog about examples"
-
-# Import from OPML
-pnpm exec tsx skills/read-rss/scripts/rss.ts feeds import --url "https://site.com/my-feeds.opml"
-```
-
-### 2. Fetching Latest Content
-
-Pull the latest articles from all or specific feeds.
+Agents should start by adding feeds or importing an existing collection.
 
 ```bash
-# Update all feeds
-pnpm exec tsx skills/read-rss/scripts/rss.ts read
+# Subscribe to a new site (metadata is auto-discovered)
+pnpm exec tsx skills/read-rss/scripts/rss.ts add "https://github.blog"
 
-# Update a specific feed
-pnpm exec tsx skills/read-rss/scripts/rss.ts read --name "Example Blog"
+# Or import an OPML file
+pnpm exec tsx skills/read-rss/scripts/rss.ts import "my_feeds.opml"
 ```
 
-### 3. Listing and Searching Articles
+### 2. Staying Updated
 
-View what's new or search for specific topics.
+Use `sync` to pull the latest content. This should be done periodically or before listing.
 
 ```bash
-# List unread articles from the last 7 days
-pnpm exec tsx skills/read-rss/scripts/rss.ts articles list
-
-# Search categories or descriptions
-pnpm exec tsx skills/read-rss/scripts/rss.ts articles search --query "Asset Allocation"
+pnpm exec tsx skills/read-rss/scripts/rss.ts sync
 ```
 
-### 4. Reading Full Text
+### 3. Browsing and Searching
 
-Download and read the full content of an article.
+`ls` shows unread items by default. Use `search` to narrow down topics.
 
 ```bash
-# Read an article by ID
-pnpm exec tsx skills/read-rss/scripts/rss.ts articles read --id "article-uuid"
+# List unread articles
+pnpm exec tsx skills/read-rss/scripts/rss.ts ls
+
+# Search for specific themes
+pnpm exec tsx skills/read-rss/scripts/rss.ts search "AI Agents"
 ```
 
-## Important Requirements
+### 4. Consumption
 
-- **Attribution**: When summarizing articles, ALWAYS attribute the source and publication date (e.g., "Source, 2024-10-31").
-- **Lazy Loading**: The script only downloads the full article text when `articles read` is explicitly called.
-- **Guidance**: Look at the `[AGENT GUIDANCE]` section at the end of the script output for recommended next steps.
+Read the full text of an article using its ID (or the first 8 characters of the ID).
+
+```bash
+pnpm exec tsx skills/read-rss/scripts/rss.ts read "a1b2c3d4"
+```
+
+## Agent Best Practices
+
+- **Thinking Coherence**: After running a command, check the `[AGENT GUIDANCE]` at the end of the output. It contains the most logical next step.
+- **Lazy Loading**: Articles are only fetched in full when `read` is called. Do not try to guess content from the `ls` output.
+- **Attribution**: When reporting news to the user, always mention the source feed and the publication date.

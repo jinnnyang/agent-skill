@@ -1,47 +1,54 @@
 # Walkthrough: `read-rss` Skill Implementation
 
-I have successfully implemented the `read-rss` skill, providing a native TypeScript solution for managing and reading RSS/Atom feeds without external dependencies.
+I have successfully implemented and refined the `read-rss` skill, providing a high-performance, native TypeScript solution for managing and reading RSS/Atom feeds directly from the terminal.
 
-## Key Accomplishments
+## 🚀 Key Accomplishments
 
 ### 1. Robust Native RSS/Atom Parser
 Implemented a two-stage regex-based parser in `rss.ts` that handles:
-- **RSS 2.0**: Accurate extraction of items, `pubDate`, `content:encoded`, and `description`.
-- **Atom 1.0**: Mapping of `<entry>`, `<published>`, and `<link href="...">` attributes to a unified schema.
-- **Metadata Support**: Captures `<tag>` and `<keyword>` elements directly from the XML payload into tags/keywords arrays.
-- **CDATA Handling**: Correctly strips `<![CDATA[...]]>` wrappers to ensure clean text output.
+- **RSS 2.0 & Atom 1.0**: Reliable extraction from both standards.
+- **Metadata Support**: Captures tags, keywords, and publication dates.
+- **CDATA Handling**: Correctly strips `<![CDATA[...]]>` wrappers for clean text.
 
-### 2. Intelligent CLI Interface
-Built a feature-rich CLI using Node.js 20's `util.parseArgs`:
-- **`feeds`**: Command family for adding, listing, removing, and configuring feeds, including OPML import via native regex.
-- **`read`**: High-performance fetcher that updates all subscriptions and populates a central `items.json` cache.
-- **`articles`**: Advanced search and listing tools. Supports searching by keyword across titles, descriptions, and categories.
+### 2. Intelligent & Intuitive CLI
+Following a recent refactor, the CLI now uses a flattened, action-oriented design:
+- **`sync`**: Fetch updates from all subscriptions.
+- **`ls`**: Scan recent unread articles with a clean, tabular view.
+- **`read <id>`**: Direct positional argument support for viewing full content.
+- **`add <url>`**: Smart subscription with metadata auto-discovery.
+- **`clean`**: Quickly mark all pending items as read.
 
 ### 3. Progressive Data Management
-- **Archiving Logic**: Implemented a 2048-item limit for `items.json`. Once exceeded, the oldest 1024 items are automatically moved to individual timestamped JSON files in `assets/archive/`.
-- **Lazy Loading**: Full-text article content is only fetched and converted to Markdown when the user explicitly requests to read a specific article.
-- **HTML-to-MD Conversion**: A native regex-based transformation engine that strips noise (scripts, styles) and converts common HTML tags (`p`, `h1-h6`, `li`, `a`, `br`) into standard Markdown.
+- **Smart Archiving**: Automatically archives old items to JSON files when the cache exceeds 2048 entries, ensuring consistent performance.
+- **Lazy Loading**: Full-text content is only fetched and converted to Markdown upon explicit request.
+- **HTML-to-MD Transformation**: A native engine that filters out noise (scripts, styles, large Base64 images) and converts common HTML structural tags into readable Markdown.
 
-## Verification Results
+### 4. Agent-First Design
+- **Short IDs**: Articles are identified by 8-character MD5 prefixes for easier interaction.
+- **Continuous Guidance**: Every command outputs a `[AGENT GUIDANCE]` tag to suggest the next logical step in the research workflow.
+
+## ✅ Verification Results
 
 ### Automated Test Runs
-- **Feed Addition**: Successfully added and tracked high-frequency feeds.
-- **Ingestion**: Verified parsing against real-world WeChat MP RSS feeds.
-- **Search**: Confirmed multi-field keyword searching functionality.
-- **Persistence**: Verified successful generation of `feeds.json`, `items.json`, and cached `.md` articles.
+- **Feed Addition**: Verified auto-discovery logic against complex landing pages.
+- **Parsing**: Confirmed accuracy against real-world WeChat MP and technical blog RSS feeds.
+- **CLI Flow**: Verified the full workflow: `add` -> `sync` -> `ls` -> `read` -> `clean`.
 
-## Usage Example
+## 🛠️ Usage Example
 
 ```bash
-# Update news
-pnpm exec tsx skills/read-rss/scripts/rss.ts read
+# Subscribe to a new blog
+pnpm exec tsx skills/read-rss/scripts/rss.ts add "https://github.blog"
 
-# Search for specific news
-pnpm exec tsx skills/read-rss/scripts/rss.ts articles search --query "Asset Allocation"
+# Stay updated
+pnpm exec tsx skills/read-rss/scripts/rss.ts sync
 
-# Read unread content
-pnpm exec tsx skills/read-rss/scripts/rss.ts articles read --id <id>
+# Browse your inbox
+pnpm exec tsx skills/read-rss/scripts/rss.ts ls
+
+# Consume content
+pnpm exec tsx skills/read-rss/scripts/rss.ts read <short-id>
 ```
 
 > [!TIP]
-> Always check the `[AGENT GUIDANCE]` at the end of each command output for logical next steps in your news-reading workflow.
+> Use `rss search "keyword"` to quickly find relevant articles across your entire subscription history!

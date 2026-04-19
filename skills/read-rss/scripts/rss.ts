@@ -40,7 +40,6 @@ interface ParsedOptions {
   };
 }
 
-type HelpEntry = string | { _default: string; [key: string]: string };
 
 // --- Constants & Paths ---
 
@@ -276,115 +275,21 @@ function htmlToMarkdown(html: string, title: string, url: string, date: string):
 
 // --- Commands ---
 
-async function cmdFeeds(args: string[], options: ParsedOptions) {
-  const sub = args[0];
+// --- Commands ---
+
+async function cmdSync(options: ParsedOptions) {
   const feeds = readJSON<Feed[]>(FEEDS_FILE, []);
-
-  switch (sub) {
-    case 'add': {
-      const { name, description } = options.values;
-      let feedUrl = options.values.url;
-      if (!name || !feedUrl) throw new Error('Missing --name or --url');
-      
-      // Auto-discovery logic if URL doesn't look like an RSS feed initially
-      if (!feedUrl.endsWith('.xml') && !feedUrl.includes('feed') && !feedUrl.includes('rss')) {
-        try {
-          const res = await safeFetch(feedUrl, 10000);
-          const html = await res.text();
-          const linkMatch = html.match(/<link[^>]+type="application\/(?:rss\+xml|atom\+xml)"[^>]+href="([^"]+)"/i);
-          if (linkMatch?.[1]) {
-            const discoveredUrl = new URL(linkMatch[1], feedUrl).href;
-            log(`Auto-discovered feed URL: ${discoveredUrl}`);
-            feedUrl = discoveredUrl;
-          }
-        } catch {
-          // Ignore fetch error in auto-discovery, proceed with original url
-        }
-      }
-
-      feeds.push({ id: crypto.randomUUID(), name, url: feedUrl, description: description || '' });
-      writeJSON(FEEDS_FILE, feeds);
-      log(`Added feed: ${name}`);
-      break;
-    }
-
-    case 'list': {
-      if (feeds.length === 0) {
-        log('No feeds found.');
-      } else {
-        log('| Name | URL | Description |');
-        log('| --- | --- | --- |');
-        feeds.forEach(f => log(`| ${f.name} | ${f.url} | ${f.description} |`));
-      }
-      guidance('To fetch updates, run `read`. Manage feeds with `add --name <n> --url <u>` or `remove --name <n>`.');
-      break;
-    }
-
-    case 'remove': {
-      const target = options.values.name || options.values.url || options.values.id;
-      const filtered = feeds.filter(f => f.name !== target && f.url !== target && f.id !== target);
-      writeJSON(FEEDS_FILE, filtered);
-      log(`Removed feed matching: ${target}`);
-      break;
-    }
-
-    case 'import': {
-      const opmlUrl = options.values.url;
-      const filename = options.values.filename;
-      let content = '';
-      if (opmlUrl) {
-        const res = await safeFetch(opmlUrl);
-        content = await res.text();
-      } else if (filename) {
-        content = fs.readFileSync(filename, 'utf-8');
-      } else {
-        throw new Error('Provide --url or --filename');
-      }
-
-      const matches = content.matchAll(/<outline[^>]+(?:title|text)="([^"]+)"[^>]+xmlUrl="([^"]+)"/gi);
-      let count = 0;
-      for (const m of matches) {
-        if (!feeds.find(f => f.url === m[2])) {
-          feeds.push({ id: crypto.randomUUID(), name: m[1], url: m[2], description: '' });
-          count++;
-        }
-      }
-      writeJSON(FEEDS_FILE, feeds);
-      log(`Imported ${count} new feeds.`);
-      break;
-    }
-
-    case 'export': {
-      let opml = '<?xml version="1.0" encoding="UTF-8"?>\n<opml version="1.0">\n<head><title>RSS Feeds Export</title></head>\n<body>\n';
-      feeds.forEach(f => {
-        const cleanName = f.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const cleanUrl = f.url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        opml += `  <outline text="${cleanName}" title="${cleanName}" type="rss" xmlUrl="${cleanUrl}"/>\n`;
-      });
-      opml += '</body>\n</opml>';
-      const outFilename = options.values.filename || `feeds-export-${Date.now()}.opml`;
-      fs.writeFileSync(outFilename, opml, 'utf-8');
-      log(`Exported ${feeds.length} feeds to ${outFilename}`);
-      break;
-    }
-
-    case 'read': {
-      await cmdRead(options);
-      break;
-    }
-
-    default:
-      log('Unknown feeds subcommand. Use add, list, remove, import, export, config, read.');
+  if (feeds.length === 0) {
+    log('No feeds subscribed yet.');
+    guidance('Use `add <url>` to subscribe to your first feed.');
+    return;
   }
-}
 
-async function cmdRead(options: ParsedOptions) {
-  const feeds = readJSON<Feed[]>(FEEDS_FILE, []);
   const items = readJSON<Article[]>(ITEMS_FILE, []);
-  const targetName = options.values.name;
+  const targetName = options.values.name || options.values.feed;
   
-  const toProcess = targetName ? feeds.filter(f => f.name === targetName) : feeds;
-  log(`Fetching updates for ${toProcess.length} feeds...`);
+  const toProcess = targetName ? feeds.filter(f => f.name === targetName || f.id === targetName) : feeds;
+  log(`📡 Syncing ${toProcess.length} feeds...`);
 
   let newCount = 0;
   await Promise.all(toProcess.map(async (feed) => {
@@ -400,7 +305,7 @@ async function cmdRead(options: ParsedOptions) {
         }
       }
     } catch (err: unknown) {
-      log(`Error fetching ${feed.name}: ${getErrorMessage(err)}`);
+      log(`❌ Error fetching ${feed.name}: ${getErrorMessage(err)}`);
     }
   }));
 
@@ -410,134 +315,283 @@ async function cmdRead(options: ParsedOptions) {
     const toArchive = items.splice(ARCHIVE_COUNT);
     const archivePath = path.join(ARCHIVE_DIR, `${Date.now()}.json`);
     writeJSON(archivePath, toArchive);
-    log(`Archived ${toArchive.length} old items to ${archivePath}`);
+    log(`📦 Archived ${toArchive.length} old items to ${archivePath}`);
   }
 
   writeJSON(ITEMS_FILE, items);
-  log(`Done. Found ${newCount} new articles.`);
-  guidance('Use `articles list` to see recent news or `articles search --query <term>` to find specific topics.');
-}
-
-async function cmdArticles(args: string[], options: ParsedOptions) {
-  const sub = args[0];
-  const items = readJSON<Article[]>(ITEMS_FILE, []);
-
-  switch (sub) {
-    case 'list': {
-      const limit = options.values.recentK ? parseInt(options.values.recentK) : 10;
-      const feedFilter = options.values.feed;
-      const list = items
-        .filter(i => (options.values.all ? true : !i.isRead))
-        .filter(i => feedFilter ? (i.feedId === feedFilter || i.id === feedFilter) : true)
-        .sort((a, b) => b.publishedDate - a.publishedDate)
-        .slice(0, limit);
-      
-      log('| ID | Date | Title | Feed |');
-      log('| --- | --- | --- | --- |');
-      list.forEach(i => log(`| ${i.id} | ${new Date(i.publishedDate).toISOString().split('T')[0]} | ${i.title} | ${i.feedId} |`));
-      
-      guidance('To read an article, use `articles read --id <ID>`. Usage: `articles list [--recentK <number>] [--all] [--feed <id/name>]`');
-      break;
-    }
-
-    case 'search': {
-      const query = (options.values.query || '').toLowerCase();
-      const results = items.filter(i => 
-        i.title.toLowerCase().includes(query) || 
-        i.description.toLowerCase().includes(query) ||
-        i.tags.some(t => t.toLowerCase().includes(query)) ||
-        i.keywords.some(k => k.toLowerCase().includes(query))
-      );
-      log(`Found ${results.length} results for "${query}":`);
-      results.slice(0, 20).forEach(i => log(`- [${i.id}] ${i.title}`));
-      guidance('Use `articles read --id <ID>` to see content, or `articles search --query <new-term>` to refine.');
-      break;
-    }
-
-    case 'read': {
-      const articleId = options.values.id;
-      const art = items.find(i => i.id === articleId);
-      if (!art) throw new Error('Article not found');
-
-      const fileName = `${art.id}.md`;
-      const filePath = path.join(ARTICLES_DIR, fileName);
-
-      if (fs.existsSync(filePath)) {
-        log(fs.readFileSync(filePath, 'utf-8'));
-      } else {
-        log(`Fetching full content from ${art.url}...`);
-        try {
-          const res = await safeFetch(art.url);
-          const html = await res.text();
-          const md = htmlToMarkdown(html, art.title, art.url, new Date(art.publishedDate).toISOString());
-          
-          fs.writeFileSync(filePath, md);
-          
-          if (md.length > 6000) {
-            log(md.slice(0, 6000) + `\n\n[...文稿过长已截断（剩余 ${md.length - 6000} 字符）。完整全文已保存至：${filePath}]`);
-            guidance(`如需研读被截断的内容，请使用文件读取工具(如view_file)查阅: ${filePath}`);
-          } else {
-            log(md);
-          }
-        } catch (err: unknown) {
-          log(`Failed to fetch article: ${getErrorMessage(err)}`);
-        }
-      }
-      art.isRead = true;
-      writeJSON(ITEMS_FILE, items);
-      break;
-    }
-
-    default:
-      log('Unknown articles subcommand.');
+  log(`✨ Done. Found ${newCount} new articles.`);
+  
+  if (newCount > 0) {
+    guidance('Latest updates arrived. Run `ls` to see the new articles or `search <term>` to find specific topics.');
+  } else {
+    guidance('No new updates. You can browse existing content with `ls` or search with `search <term>`.');
   }
 }
 
-function printHelp(command?: string, sub?: string) {
-  const help: Record<string, HelpEntry> = {
-    root: `Usage: rss.ts <command> [subcommand] [options]
+async function cmdList(options: ParsedOptions) {
+  const items = readJSON<Article[]>(ITEMS_FILE, []);
+  if (items.length === 0) {
+    log('Your inbox is empty.');
+    guidance('Run `sync` to fetch updates from your feeds.');
+    return;
+  }
 
-Commands:
-  feeds     Manage RSS/Atom feeds
-  read      Fetch updates from feeds
-  articles  Search and read articles`,
-    feeds: {
-      _default: `Usage: rss.ts feeds <subcommand> [options]
+  const limit = options.values.recentK ? parseInt(options.values.recentK) : 15;
+  const feedFilter = options.values.feed;
+  const list = items
+    .filter(i => (options.values.all ? true : !i.isRead))
+    .filter(i => feedFilter ? (i.feedId === feedFilter || i.id === feedFilter) : true)
+    .sort((a, b) => b.publishedDate - a.publishedDate)
+    .slice(0, limit);
+  
+  if (list.length === 0) {
+    log('No unread articles found.');
+    guidance('Use `ls --all` to see everything or `sync` to fetch new content.');
+    return;
+  }
 
-Subcommands:
-  add       --name <name> --url <url> [--description <desc>]
-  list      List all feeds
-  remove    --name <name> | --url <url> | --id <id>
-  import    --url <opml-url> | --filename <opml-file>
-  export    --filename <output-file> (defaults to feeds-export-<timestamp>.opml)
-  read      Alias for top-level read command`,
-    },
-    read: `Usage: rss.ts read [--name <feed-name>]
+  log(`📋 Latest ${options.values.all ? '' : 'Unread '}Articles:`);
+  log('| ID (Short) | Date | Title | Feed |');
+  log('| :--- | :--- | :--- | :--- |');
+  list.forEach(i => log(`| ${i.id.substring(0, 8)} | ${new Date(i.publishedDate).toISOString().split('T')[0]} | ${i.title} | ${i.feedId} |`));
+  
+  guidance('To read an article, use `read <id>`. To mark all visible as read, use `clean`.');
+}
+
+async function cmdSearch(query: string) {
+  if (!query) throw new Error('Query required. Usage: search <term>');
+  
+  const items = readJSON<Article[]>(ITEMS_FILE, []);
+  const lowerQuery = query.toLowerCase();
+  const results = items.filter(i => 
+    i.title.toLowerCase().includes(lowerQuery) || 
+    i.description.toLowerCase().includes(lowerQuery) ||
+    i.tags.some(t => t.toLowerCase().includes(lowerQuery)) ||
+    i.keywords.some(k => k.toLowerCase().includes(lowerQuery))
+  );
+
+  if (results.length === 0) {
+    log(`No results found for "${query}".`);
+    guidance('Try a different keyword or run `sync` to ensure your cache is up to date.');
+    return;
+  }
+
+  log(`🔍 Found ${results.length} results for "${query}":`);
+  results.slice(0, 15).forEach(i => {
+    const snippet = i.description.replace(/<[^>]+>/g, '').substring(0, 100).trim();
+    log(`\n[${i.id.substring(0, 8)}] ${i.title}`);
+    log(`   > ${snippet}${snippet.length >= 100 ? '...' : ''}`);
+  });
+
+  guidance('Use `read <id>` to see the full content of any article above.');
+}
+
+async function cmdReadArticle(id: string) {
+  if (!id) throw new Error('Article ID required. Usage: read <id>');
+  
+  const items = readJSON<Article[]>(ITEMS_FILE, []);
+  // Support both full ID and 8-char prefix
+  const art = items.find(i => i.id === id || i.id.startsWith(id));
+  
+  if (!art) {
+    log(`❌ Article with ID "${id}" not found.`);
+    guidance('Run `ls` to see available IDs or `sync` to fetch new ones.');
+    return;
+  }
+
+  const fileName = `${art.id}.md`;
+  const filePath = path.join(ARTICLES_DIR, fileName);
+
+  if (fs.existsSync(filePath)) {
+    log(fs.readFileSync(filePath, 'utf-8'));
+  } else {
+    log(`📖 Fetching full content from: ${art.url}`);
+    try {
+      const res = await safeFetch(art.url);
+      const html = await res.text();
+      const md = htmlToMarkdown(html, art.title, art.url, new Date(art.publishedDate).toISOString());
+      
+      fs.writeFileSync(filePath, md);
+      
+      if (md.length > 6000) {
+        log(md.slice(0, 6000) + `\n\n[...Content truncated (remaining ${md.length - 6000} chars). Full text saved to: ${filePath}]`);
+        guidance(`This article is very long. Use a file viewer (e.g. view_file) to read the full saved version: ${filePath}`);
+      } else {
+        log(md);
+      }
+    } catch (err: unknown) {
+      log(`❌ Failed to fetch article: ${getErrorMessage(err)}`);
+    }
+  }
+
+  // Mark as read
+  if (!art.isRead) {
+    art.isRead = true;
+    writeJSON(ITEMS_FILE, items);
+  }
+}
+
+async function cmdClean() {
+  const items = readJSON<Article[]>(ITEMS_FILE, []);
+  let count = 0;
+  for (const item of items) {
+    if (!item.isRead) {
+      item.isRead = true;
+      count++;
+    }
+  }
+  if (count > 0) {
+    writeJSON(ITEMS_FILE, items);
+    log(`🧹 Marked ${count} articles as read.`);
+  } else {
+    log('All articles were already marked as read.');
+  }
+  guidance('Your inbox is now clean. Use `sync` to fetch new articles or `ls --all` to view your history.');
+}
+
+async function cmdAddFeed(url: string, options: ParsedOptions) {
+  if (!url) throw new Error('Feed URL required. Usage: add <url> [--name <name>]');
+  
+  const feeds = readJSON<Feed[]>(FEEDS_FILE, []);
+  if (feeds.find(f => f.url === url)) {
+    log(`⚠️ Already subscribed to: ${url}`);
+    return;
+  }
+
+  let finalName = options.values.name;
+  let finalDesc = options.values.description || '';
+  let finalUrl = url;
+
+  log(`🌐 Probing feed: ${url}...`);
+
+  try {
+    const res = await safeFetch(url);
+    const content = await res.text();
+
+    // Auto-discovery from HTML if provided URL is a landing page
+    if (content.includes('<html') || content.includes('<!DOCTYPE html')) {
+      const linkMatch = content.match(/<link[^>]+type="application\/(?:rss\+xml|atom\+xml)"[^>]+href="([^"]+)"/i);
+      if (linkMatch?.[1]) {
+        finalUrl = new URL(linkMatch[1], url).href;
+        log(`✨ Auto-discovered RSS URL: ${finalUrl}`);
+        // Fetch the actual XML now
+        const resXml = await safeFetch(finalUrl);
+        const xml = await resXml.text();
+        if (!finalName) finalName = extractTag(xml, 'title');
+        if (!finalDesc) finalDesc = extractTag(xml, 'description') || extractTag(xml, 'subtitle');
+      }
+    } else {
+      // It's already XML
+      if (!finalName) finalName = extractTag(content, 'title');
+      if (!finalDesc) finalDesc = extractTag(content, 'description') || extractTag(content, 'subtitle');
+    }
+  } catch (err) {
+    log(`⚠️ Could not probe feed metadata: ${getErrorMessage(err)}. Using provided info.`);
+  }
+
+  const name = finalName || new URL(finalUrl).hostname;
+  feeds.push({ id: crypto.randomUUID(), name, url: finalUrl, description: finalDesc });
+  writeJSON(FEEDS_FILE, feeds);
+  
+  log(`✅ Subscribed to: ${name}`);
+  guidance(`Excellent. You should now run \`sync\` to pull the latest articles from "${name}".`);
+}
+
+async function cmdRemoveFeed(target: string) {
+  if (!target) throw new Error('Feed ID, Name or URL required. Usage: rm <target>');
+  
+  const feeds = readJSON<Feed[]>(FEEDS_FILE, []);
+  const initialCount = feeds.length;
+  const filtered = feeds.filter(f => f.id !== target && f.name !== target && f.url !== target);
+  
+  if (filtered.length === initialCount) {
+    log(`❌ No feed matching "${target}" found.`);
+  } else {
+    writeJSON(FEEDS_FILE, filtered);
+    log(`🗑️ Removed feed matching: ${target}`);
+  }
+}
+
+async function cmdShowFeeds() {
+  const feeds = readJSON<Feed[]>(FEEDS_FILE, []);
+  if (feeds.length === 0) {
+    log('No feeds subscribed.');
+    guidance('Use `add <url>` to subscribe.');
+    return;
+  }
+
+  log('📡 Subscribed Feeds:');
+  log('| Name | ID | URL |');
+  log('| :--- | :--- | :--- |');
+  feeds.forEach(f => log(`| ${f.name} | ${f.id.substring(0, 8)} | ${f.url} |`));
+  guidance('Manage feeds with `add`, `rm`, `import`, or `export`. Use `sync` to fetch updates.');
+}
+
+async function cmdImportExport(sub: 'import' | 'export', target: string, options: ParsedOptions) {
+  const feeds = readJSON<Feed[]>(FEEDS_FILE, []);
+
+  if (sub === 'import') {
+    if (!target) throw new Error('OPML URL or Filename required. Usage: import <target>');
+    let content = '';
+    if (target.startsWith('http')) {
+      const res = await safeFetch(target);
+      content = await res.text();
+    } else {
+      content = fs.readFileSync(target, 'utf-8');
+    }
+
+    const matches = content.matchAll(/<outline[^>]+(?:title|text)="([^"]+)"[^>]+xmlUrl="([^"]+)"/gi);
+    let count = 0;
+    for (const m of matches) {
+      if (!feeds.find(f => f.url === m[2])) {
+        feeds.push({ id: crypto.randomUUID(), name: m[1], url: m[2], description: '' });
+        count++;
+      }
+    }
+    writeJSON(FEEDS_FILE, feeds);
+    log(`📥 Imported ${count} new feeds.`);
+    guidance('Run `sync` to fetch content for these new subscriptions.');
+  } else {
+    let opml = '<?xml version="1.0" encoding="UTF-8"?>\n<opml version="1.0">\n<head><title>RSS Feeds Export</title></head>\n<body>\n';
+    feeds.forEach(f => {
+      const cleanName = f.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const cleanUrl = f.url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      opml += `  <outline text="${cleanName}" title="${cleanName}" type="rss" xmlUrl="${cleanUrl}"/>\n`;
+    });
+    opml += '</body>\n</opml>';
+    const outFilename = target || options.values.filename || `feeds-export-${Date.now()}.opml`;
+    fs.writeFileSync(outFilename, opml, 'utf-8');
+    log(`📤 Exported ${feeds.length} feeds to ${outFilename}`);
+  }
+}
+
+function printHelp() {
+  log(`
+🚀 RSS Skill - Unified Terminal Feed Reader
+
+Usage: rss.ts <command> [argument] [options]
+
+Core Commands:
+  sync              Fetch latest updates from all feeds
+  ls, list          List recent unread articles (use --all for everything)
+  search <query>    Search keywords in article titles and descriptions
+  read <id>         Display full text of an article (supports 8-char ID prefix)
+  clean             Mark all current items as read
+
+Feed Management:
+  add <url>         Subscribe to a new feed (auto-discovers metadata)
+  rm <id|name|url>  Remove/Unsubscribe a feed
+  feeds             List all active subscriptions
+  import <url|file> Import feeds from an OPML source
+  export [file]     Export subscriptions to an OPML file
 
 Options:
-  --name    Only fetch updates for a specific feed`,
-    articles: {
-      _default: `Usage: rss.ts articles <subcommand> [options]
-
-Subcommands:
-  list      [--recentK <n>] [--all] [--feed <id/name>]
-  search    --query <term>
-  read      --id <id>`,
-    }
-  };
-
-  if (!command) {
-    log(help.root as string);
-  } else if (command === 'read') {
-    log(help.read as string);
-  } else if (help[command]) {
-    const cmdHelp = help[command];
-    if (typeof cmdHelp === 'string') {
-      log(cmdHelp);
-    } else {
-      log(sub && cmdHelp[sub] ? cmdHelp[sub] : cmdHelp._default);
-    }
-  }
+  --all             Used with 'ls' to show both read and unread items
+  --feed <id|name>  Filter 'ls' or 'sync' by a specific feed
+  --recentK <n>     Number of items to show in 'ls' (default: 15)
+  --name <name>     Override name when using 'add'
+  --help, -h        Show this help message
+  `);
 }
 
 // --- Main ---
@@ -548,34 +602,83 @@ async function main() {
   const { values, positionals } = parseArgs({
     options: {
       name: { type: 'string' },
-      url: { type: 'string' },
+      url: { type: 'string' }, // deprecated but kept for compat
       description: { type: 'string' },
-      id: { type: 'string' },
+      id: { type: 'string' }, // deprecated but kept for compat
       filename: { type: 'string' },
       recentK: { type: 'string' },
       all: { type: 'boolean' },
-      query: { type: 'string' },
+      query: { type: 'string' }, // deprecated but kept for compat
       feed: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true
   });
 
-  const command = positionals[0];
-  const subArgs = positionals.slice(1);
+  const command = positionals[0]?.toLowerCase();
+  const arg = positionals[1];
 
   if (values.help || !command) {
-    printHelp(command, subArgs[0]);
+    printHelp();
     return;
   }
 
   try {
-    if (command === 'feeds') await cmdFeeds(subArgs, { values });
-    else if (command === 'read') await cmdRead({ values });
-    else if (command === 'articles') await cmdArticles(subArgs, { values });
-    else printHelp();
+    switch (command) {
+      case 'sync':
+        await cmdSync({ values });
+        break;
+      case 'ls':
+      case 'list':
+        await cmdList({ values });
+        break;
+      case 'search':
+        await cmdSearch(arg || (values.query as string));
+        break;
+      case 'read':
+        await cmdReadArticle(arg || (values.id as string));
+        break;
+      case 'clean':
+        await cmdClean();
+        break;
+      case 'add':
+      case 'subscribe':
+      case 'sub':
+        await cmdAddFeed(arg || (values.url as string), { values });
+        break;
+      case 'rm':
+      case 'remove':
+      case 'unsubscribe':
+      case 'unsub':
+        await cmdRemoveFeed(arg || (values.id as string) || (values.name as string));
+        break;
+      case 'feeds':
+      case 'sources':
+        await cmdShowFeeds();
+        break;
+      case 'import':
+        await cmdImportExport('import', arg || (values.url as string), { values });
+        break;
+      case 'export':
+        await cmdImportExport('export', arg || (values.filename as string), { values });
+        break;
+      
+      // Backward compatibility for the old nested commands
+      case 'articles': {
+        const sub = positionals[1];
+        if (sub === 'list') await cmdList({ values });
+        else if (sub === 'search') await cmdSearch(values.query as string);
+        else if (sub === 'read') await cmdReadArticle(values.id as string);
+        else throw new Error('Unknown articles subcommand. Use list, search, or read.');
+        break;
+      }
+
+      default:
+        log(`Unknown command: ${command}`);
+        printHelp();
+    }
   } catch (err: unknown) {
-    log(`Error: ${getErrorMessage(err)}`);
+    log(`❌ Error: ${getErrorMessage(err)}`);
     process.exit(1);
   }
 }
